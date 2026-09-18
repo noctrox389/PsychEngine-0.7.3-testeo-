@@ -1,6 +1,6 @@
-name: Main Build test
+name: Android Build
 
-on: 
+on:
   workflow_dispatch:
 
 env:
@@ -10,6 +10,7 @@ jobs:
   android:
     name: Build Android
     runs-on: ubuntu-24.04
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6.0.2
@@ -18,15 +19,28 @@ jobs:
         uses: krdlab/setup-haxe@v2.1.0
         with:
           haxe-version: ${{ env.HAXE_VER }}
-          
-      - name: Authenticate Git for Private Repositories
-        run: git config --global url."https://${{ secrets.ORG_PAT_TOKEN }}@github.com/".insteadOf "git@github.com:"
 
-      - name: Install Libraries
+      - name: Authenticate Git
+        run: |
+          git config --global url."https://${{ secrets.ORG_PAT_TOKEN }}@github.com/".insteadOf "git@github.com:"
+
+      - name: Install HMM
         run: |
           haxelib install hmm --quiet
           haxelib run hmm setup
+
+      - name: Install Libraries
+        run: |
           haxelib run hmm install
+
+      # Instalar hxdiscord_rpc manualmente
+      - name: Install hxdiscord_rpc
+        run: |
+          haxelib remove hxdiscord_rpc || true
+          haxelib git hxdiscord_rpc https://github.com/FunkinPortingMobile/hxdiscord_rpc-android-support.git master
+
+      - name: Rebuild hxcpp
+        run: |
           haxelib run lime rebuild hxcpp --quiet
 
       - name: Configure Android
@@ -37,160 +51,13 @@ jobs:
           haxelib run lime config JAVA_HOME $JAVA_HOME_17_X64
           haxelib run lime config ANDROID_SETUP true
 
-      - name: Compile
-        run: haxelib run lime build android -release
+      - name: Compile Android
+        run: |
+          haxelib run lime build android -release
 
-      - name: Upload Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v7.0.1
         with:
           name: PsychEngine-Android
           path: export/release/android/bin/app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-
-  ios:
-    name: Build iOS
-    runs-on: macos-15
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup Haxe
-        uses: krdlab/setup-haxe@v2.1.0
-        with:
-          haxe-version: ${{ env.HAXE_VER }}
-          
-      - name: Authenticate Git for Private Repositories
-        run: git config --global url."https://${{ secrets.ORG_PAT_TOKEN }}@github.com/".insteadOf "git@github.com:"
-          
-      - name: Install Libraries
-        run: |
-         haxelib install hmm --quiet
-         haxelib run hmm setup --quiet
-         haxelib run hmm install --quiet
-         haxelib remove lime
-         haxelib git lime https://github.com/DeveloperPorting-Stuff/LimeFunkinCrew main --quiet
-         haxelib run lime rebuild hxcpp
-
-      - name: Compile
-        run: haxelib run lime build ios -nosign
-
-      - name: Making ipa file
-        run: |
-          brew install ldid
-          cd export/release/ios/build/Release-iphoneos/PsychMobile0.7.3.app
-          ldid -S../../../PsychMobile0.7.3/PsychMobile0.7.3.entitlements PsychMobile0.7.3
-          cd ..
-          mkdir Payload
-          mv PsychMobile0.7.3.app Payload
-          zip -r PsychMobile0.7.3.ipa Payload
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: PsychEngine-iOS
-          path: export/release/ios/build/Release-iphoneos/*.ipa
-          if-no-files-found: error
-
-  ## Comment Windows for now
-  ## windows:
-    ## name: Build Windows
-    ## runs-on: windows-2022
-    ## env:
-      ## HAXEPATH: D:\haxelib
-    ## steps:
-      ## - name: Checkout Repository
-        ## uses: actions/checkout@v6.0.2
-
-      ## - name: Setup Haxe
-        ## uses: krdlab/setup-haxe@v2.1.0
-        ## with:
-          ## haxe-version: ${{ env.HAXE_VER }}
-
-      ## - name: Install Libraries
-        ## run: |
-          ## haxelib install hmm --quiet
-          ## haxelib run hmm setup
-         ## haxelib run hmm install
-          ## haxelib run lime rebuild hxcpp --quiet
-          ## haxelib run lime test cpp -clean
-
-      ## - name: Compile
-        ## run: haxelib run lime build windows -release
-
-     ## - name: Upload Artifact
-        ## uses: actions/upload-artifact@v7.0.1
-        ## with:
-          ## name: PsychEngine-Windows
-          ## path: export/release/windows/bin/
-          ## if-no-files-found: error
-
-  linux:
-    name: Build Linux
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup Haxe
-        uses: krdlab/setup-haxe@v2.1.0
-        with:
-          haxe-version: ${{ env.HAXE_VER }}
-
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvlc-dev libvlccore-dev libasound2-dev libx11-dev libxext-dev libxi-dev libxrandr-dev libxinerama-dev
-
-      - name: Authenticate Git for Private Repositories
-        run: git config --global url."https://${{ secrets.ORG_PAT_TOKEN }}@github.com/".insteadOf "git@github.com:"
-        
-      - name: Install Libraries
-        run: |
-          haxelib install hmm --quiet
-          haxelib run hmm setup
-          haxelib run hmm install
-          haxelib run lime rebuild hxcpp --quiet
-
-      - name: Compile
-        run: haxelib run lime build linux -release
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: PsychEngine-Linux
-          path: export/release/linux/bin/
-          if-no-files-found: error
-
-  macos:
-    name: Build MacOS
-    runs-on: macos-15
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup Haxe
-        uses: krdlab/setup-haxe@v2.1.0
-        with:
-          haxe-version: ${{ env.HAXE_VER }}
-          
-      - name: Authenticate Git for Private Repositories
-        run: git config --global url."https://${{ secrets.ORG_PAT_TOKEN }}@github.com/".insteadOf "git@github.com:"
-        
-      - name: Install Libraries
-        run: |
-          haxelib install hmm --quiet
-          haxelib run hmm setup
-          haxelib run hmm install
-          haxelib remove lime
-          haxelib git lime https://github.com/DeveloperPorting-Stuff/LimeFunkinCrew main --quiet
-          haxelib run lime rebuild hxcpp --quiet
-
-      - name: Compile
-        run: haxelib run lime build mac -release
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: PsychEngine-MacOS
-          path: export/release/macos/bin/
           if-no-files-found: error
