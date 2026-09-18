@@ -82,7 +82,7 @@
       "type": "git",
       "dir": null,
       "ref": "master",
-      "url": "git@github.com:FunkinPortingMobile/hxdiscord_rpc-android-support"
+      "url": "https://github.com/FunkinPortingMobile/hxdiscord_rpc-android-support"
     },
     {
       "name": "flxanimate",
